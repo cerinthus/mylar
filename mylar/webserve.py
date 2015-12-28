@@ -2277,7 +2277,7 @@ class WebInterface(object):
                                 MSCheck[key].append(str(tchk['IssueYear']))
 
                 #write out here
-                logger.febug(str(MSCheck))
+                logger.fdebug(str(MSCheck))
 
         #now we load in the list without the multiple entries (ie. series that appear only once in the cbl and don't have an IssueID)
         Arc_Issues = myDB.select("SELECT * FROM readinglist WHERE StoryArcID=? AND IssueID is NULL GROUP BY ComicName HAVING (COUNT(ComicName) = 1)", [storyarcid])
