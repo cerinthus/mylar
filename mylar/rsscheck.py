@@ -130,7 +130,6 @@ def torrents(pickfeed=None, seriesname=None, issue=None, feedinfo=None):
                 return
 
             feedme = feedparser.parse(r.content)
-            #feedme = feedparser.parse(feed)
 
 
         i = 0
@@ -224,7 +223,10 @@ def torrents(pickfeed=None, seriesname=None, issue=None, feedinfo=None):
                     seeddigits = 0
 
                     if int(mylar.MINSEEDS) >= int(seeddigits):
+                        #new releases has it as '&id', notification feeds have it as %ampid (possibly even &amp;id
                         link = feedme.entries[i].link
+                        link = re.sub('&amp','&', link)
+                        link = re.sub('&amp;','&', link)
                         linkst = link.find('&id')
                         linken = link.find('&', linkst +1)
                         if linken == -1:
@@ -493,48 +495,47 @@ def torrentdbsearch(seriesname, issue, comicid=None, nzbprov=None):
         #cache db that have the incorrect entry, we'll adjust.
         torTITLE = re.sub('&amp;', '&', tor['Title']).strip()
 
-        torsplit = torTITLE.split('/')
+        #torsplit = torTITLE.split(' ')
         if mylar.PREFERRED_QUALITY == 1:
             if 'cbr' in torTITLE:
                 logger.fdebug('Quality restriction enforced [ cbr only ]. Accepting result.')
             else:
                 logger.fdebug('Quality restriction enforced [ cbr only ]. Rejecting result.')
+                continue
         elif mylar.PREFERRED_QUALITY == 2:
             if 'cbz' in torTITLE:
                 logger.fdebug('Quality restriction enforced [ cbz only ]. Accepting result.')
             else:
                 logger.fdebug('Quality restriction enforced [ cbz only ]. Rejecting result.')
-
+                continue
         logger.fdebug('tor-Title: ' + torTITLE)
-        logger.fdebug('there are ' + str(len(torsplit)) + ' sections in this title')
+        #logger.fdebug('there are ' + str(len(torsplit)) + ' sections in this title')
         i=0
         if nzbprov is not None:
             if nzbprov != tor['Site']:
                 logger.fdebug('this is a result from ' + str(tor['Site']) + ', not the site I am looking for of ' + str(nzbprov))
                 continue
         #0 holds the title/issue and format-type.
-        ext_check = True   # extension checker to enforce cbr/cbz filetype restrictions.
-        while (i < len(torsplit)):
-            #we'll rebuild the string here so that it's formatted accordingly to be passed back to the parser.
-            logger.fdebug('section(' + str(i) + '): ' + torsplit[i])
-            #remove extensions
-            titletemp = torsplit[i]
-            titletemp = re.sub('cbr', '', titletemp)
-            titletemp = re.sub('cbz', '', titletemp)
-            titletemp = re.sub('none', '', titletemp)
 
-            if i == 0:
-                rebuiltline = titletemp
-            else:
-                rebuiltline = rebuiltline + ' (' + titletemp + ')'
-            i+=1
+#--- this was for old cbt feeds, no longer used for 32p
+#        while (i < len(torsplit)):
+#            #we'll rebuild the string here so that it's formatted accordingly to be passed back to the parser.
+#            logger.fdebug('section(' + str(i) + '): ' + torsplit[i])
+#            #remove extensions
+#            titletemp = torsplit[i]
+#            titletemp = re.sub('cbr', '', titletemp)
+#            titletemp = re.sub('cbz', '', titletemp)
+#            titletemp = re.sub('none', '', titletemp)
 
-        if ext_check == False:
-            continue
-        logger.fdebug('rebuiltline is :' + rebuiltline)
-
+#            if i == 0:
+#                rebuiltline = titletemp
+#            else:
+#                rebuiltline = rebuiltline + ' (' + titletemp + ')'
+#            i+=1
+#        logger.fdebug('rebuiltline is :' + rebuiltline)
+#----
         seriesname_mod = seriesname
-        foundname_mod = torsplit[0]
+        foundname_mod = torTITLE #torsplit[0]
         seriesname_mod = re.sub("\\band\\b", " ", seriesname_mod.lower())
         foundname_mod = re.sub("\\band\\b", " ", foundname_mod.lower())
         seriesname_mod = re.sub("\\bthe\\b", " ", seriesname_mod.lower())
@@ -571,24 +572,24 @@ def torrentdbsearch(seriesname, issue, comicid=None, nzbprov=None):
             extra = ''
 
             #the title on 32P has a mix-mash of crap...ignore everything after cbz/cbr to cleanit
-            ctitle = torTITLE.find('cbr')
-            if ctitle == 0:
-                ctitle = torTITLE.find('cbz')
-                if ctitle == 0:
-                    ctitle = torTITLE.find('none')
-                    if ctitle == 0:
-                        logger.fdebug('cannot determine title properly - ignoring for now.')
-                        continue
-            cttitle = torTITLE[:ctitle]
+            #ctitle = torTITLE.find('cbr')
+            #if ctitle == 0:
+            #    ctitle = torTITLE.find('cbz')
+            #    if ctitle == 0:
+            #        ctitle = torTITLE.find('none')
+            #        if ctitle == 0:
+            #            logger.fdebug('cannot determine title properly - ignoring for now.')
+            #            continue
+            #cttitle = torTITLE[:ctitle]
 
-            if tor['Site'] == '32P':
-                st_pub = rebuiltline.find('(')
-                if st_pub < 2 and st_pub != -1:
-                    st_end = rebuiltline.find(')')
-                    rebuiltline = rebuiltline[st_end +1:]
+#            if tor['Site'] == '32P':
+#                st_pub = rebuiltline.find('(')
+#                if st_pub < 2 and st_pub != -1:
+#                    st_end = rebuiltline.find(')')
+#                    rebuiltline = rebuiltline[st_end +1:]
 
             tortheinfo.append({
-                          'title':   rebuiltline, #cttitle,
+                          'title':   torTITLE, #cttitle,
                           'link':    tor['Link'],
                           'pubdate': tor['Pubdate'],
                           'site':    tor['Site'],
@@ -857,11 +858,14 @@ def torsend2client(seriesname, issue, seriesyear, linkit, site):
                 logger.warn('[32P] Unable to authenticate using existing RSS Feed given. Make sure that you have provided a CURRENT feed from 32P')
                 return "fail"
         else:
+            logger.info('blah: ' + str(r.status_code))
             return "fail"
 
-    if str(r.status_code) == '403':
+    if site == 'KAT' and any([str(r.status_code) == '403', str(r.status_code) == '404']):
+        logger.warn('Unable to download from KAT [' + str(r.status_code) + ']') 
         #retry with the alternate torrent link.
         url = helpers.torrent_create('KAT', linkit, True)
+        logger.fdebug('Trying alternate url: ' + str(url))
         try:
             r = requests.get(url, params=payload, verify=verify, stream=True, headers=headers)
 
@@ -889,9 +893,20 @@ def torsend2client(seriesname, issue, seriesyear, linkit, site):
         return "pass"
 
     elif mylar.TORRENT_SEEDBOX:
-        tssh = ftpsshup.putfile(filepath, filename)
-        return tssh
+        if mylar.RTORRENT_HOST:
+            import test
+            rp = test.RTorrent()
+            torrent_info = rp.main(filepath=filepath)        
 
+            logger.info(torrent_info)
+            if torrent_info:
+                return "pass"
+            else:
+                return "fail"
+        else:
+            tssh = ftpsshup.putfile(filepath, filename)
+            return tssh
+	
 
 if __name__ == '__main__':
     #torrents(sys.argv[1])
